@@ -6,14 +6,13 @@ WITH tesla_owner AS (SELECT p.*
                        AND d.hair_color = 'red'
                        AND d.car_make = 'Tesla'
                        AND d.car_model = 'Model S'),
-     participant AS (SELECT p.id
+     participant AS (SELECT f.person_id AS id
                      FROM facebook_event_checkin f
-                              JOIN person p ON f.person_id = p.id
                      WHERE f.event_name = 'SQL Symphony Concert'
                        AND f.date BETWEEN 20171201 AND 20171231
-                     GROUP BY p.id
+                     GROUP BY f.person_id
                      HAVING count(*) = 3)
 
-SELECT *
+SELECT t.id, t.name
 FROM tesla_owner t
          JOIN participant p on t.id = p.id;

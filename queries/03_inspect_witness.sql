@@ -8,5 +8,5 @@ FROM last_address
 UNION ALL
 SELECT *
 FROM person
-WHERE name LIKE '%Annabel%'
+WHERE name LIKE 'Annabel%'
   AND address_street_name = 'Franklin Ave';

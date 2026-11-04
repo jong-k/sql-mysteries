@@ -8,7 +8,7 @@ WITH suspect1 AS (SELECT *
                   FROM drivers_license d
                            JOIN person p ON d.id = p.license_id
                   WHERE d.plate_number LIKE '%H42W%')
-SELECT *
+SELECT s1.person_id, s1.name
 FROM suspect1 s1
          JOIN suspect2 s2 ON s1.person_id = s2.id;
 
