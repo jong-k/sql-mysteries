@@ -9,8 +9,6 @@
 
 테이블 및 뷰 목록과 생성 DDL을 확인한다
 
-### 01_schema_overview.sql
-
 ```sqlite
 -- 테이블 및 뷰 목록과 생성 DDL 확인
 SELECT type, name, sql
@@ -112,4 +110,73 @@ FROM interview i
 - 범인은 Get Fit Now Gym 가방을 소지했으며 48Z로 시작하는 멤버십 번호였음. gold 회원 전용 가방이었음. 차량 번호판에 H42W 가 포함되어 있었음
 - 범인은 1월 9일에 헬스장에 있었다
 
-## 
+## 헬스클럽 회원 명부, 체크인 기록, 운전면허 테이블 확인
+
+차량 번호를 차치하고, 위의 단서대로 헬스클럽 회원 명부, 체크인 테이블을 확인한다
+
+```sqlite
+WITH suspect AS (SELECT *
+                 FROM get_fit_now_member m
+                          JOIN get_fit_now_check_in c ON m.id = c.membership_id
+                 WHERE m.membership_status = 'gold'
+                   AND m.id LIKE '48Z%'
+                   AND c.check_in_date = 20180109)
+SELECT *
+FROM suspect;
+```
+
+결과는 2명이다. 이제 차량 번호까지 확인해서 좁히면 된다.
+
+운전면허 테이블에서 차량 번호를 확인하고, 이를 주민 테이블과 엮어서 확인하면 주민 번호를 얻을 수 있다. 이 주민 번호를 헬스클럽 회원 명부에서 확인하면 된다.
+
+```sqlite
+WITH suspect1 AS (SELECT *
+                  FROM get_fit_now_member m
+                           JOIN get_fit_now_check_in c ON m.id = c.membership_id
+                  WHERE m.membership_status = 'gold'
+                    AND m.id LIKE '48Z%'
+                    AND c.check_in_date = 20180109),
+     suspect2 AS (SELECT p.id
+                  FROM drivers_license d
+                           JOIN person p ON d.id = p.license_id
+                  WHERE d.plate_number LIKE '%H42W%')
+SELECT *
+FROM suspect1 s1
+         JOIN suspect2 s2 ON s1.person_id = s2.id;
+
+```
+
+범인이 도출됐다.
+
+정답이면 사건의 진범을 더 파헤쳐보라는 결과가 나온다. 범인의 인터뷰 기록을 살펴보라는 단서가 주어진다.
+
+## 진범 찾기
+
+범인의 인터뷰에 따르면, 진범은
+- 여성
+- 키가 65~67인
+- 빨간 머리
+- 테슬라 모델 S 소유
+- 2017년 12월 SQL 심포니 콘서트에 3번 참여
+
+```sqlite
+WITH tesla_owner AS (SELECT p.*
+                     FROM drivers_license d
+                              JOIN person p ON d.id = p.license_id
+                     WHERE d.height BETWEEN 65 AND 67
+                       AND d.gender = 'female'
+                       AND d.hair_color = 'red'
+                       AND d.car_make = 'Tesla'
+                       AND d.car_model = 'Model S'),
+     participant AS (SELECT p.id
+                     FROM facebook_event_checkin f
+                              JOIN person p ON f.person_id = p.id
+                     WHERE f.event_name = 'SQL Symphony Concert'
+                       AND f.date BETWEEN 20171201 AND 20171231
+                     GROUP BY p.id
+                     HAVING count(*) = 3)
+
+SELECT *
+FROM tesla_owner t
+         JOIN participant p on t.id = p.id;
+```
